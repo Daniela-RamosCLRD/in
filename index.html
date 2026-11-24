@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora CBS e IBS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: coluna única de formulário à esquerda e resultado fixo à direita em telas largas; empilha no celular. */
+:root{
+  --ink:#1c1c1a;
+  --muted:#545454;
+  --paper:#f2f3f5;
+  --card:#ffffff;
+  --line:#d9d9d9;
+  --accent:#e94f1b;
+  --accent-ink:#ffffff;
+  --cbs:#e94f1b;
+  --ibsuf:#4c5055;
+  --ibsmun:#f9b44d;
+  --warn-bg:#fdf1d3;
+  --warn-ink:#6b4a00;
+  --err-bg:#fde8e6;
+  --err-ink:#8a1f17;
+  --font-body:"Montserrat",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-num:"Montserrat",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#f2f3f5;--muted:#a9adb0;--paper:#1c1c1a;--card:#26262a;--line:#403e52;
+    --accent:#f26a3a;--accent-ink:#1c1c1a;--cbs:#f26a3a;--ibsuf:#a9b0b8;--ibsmun:#f9b44d;
+    --warn-bg:#3a2f10;--warn-ink:#f4da68;--err-bg:#3d1b18;--err-ink:#f4b3ad;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#f2f3f5;--muted:#a9adb0;--paper:#1c1c1a;--card:#26262a;--line:#403e52;
+  --accent:#f26a3a;--accent-ink:#1c1c1a;--cbs:#f26a3a;--ibsuf:#a9b0b8;--ibsmun:#f9b44d;
+  --warn-bg:#3a2f10;--warn-ink:#f4da68;--err-bg:#3d1b18;--err-ink:#f4b3ad;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 16px 56px}
+.logo{display:inline-block;margin-bottom:16px;line-height:0}
+.logo img{height:38px;width:auto;display:block}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .logo{background:#fff;padding:8px 12px;border-radius:8px}}
+:root[data-theme="dark"] .logo{background:#fff;padding:8px 12px;border-radius:8px}
+header h1{font-size:1.6rem;font-weight:600;margin:0 0 4px;text-wrap:balance}
+header p{margin:0;color:var(--muted);max-width:68ch}
+.status{margin-top:10px;font-size:.85rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;margin-top:22px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
+.card h2{font-size:1rem;font-weight:600;margin:0 0 14px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;min-width:0}
+.field label,.lbl{font-size:.85rem;font-weight:500}
+.hint{font-size:.8rem;color:var(--muted)}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:520px){.row,.row3{grid-template-columns:minmax(0,1fr)}}
+input[type=text],input[type=number],input[type=date],select{
+  width:100%;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);
+  border-radius:8px;padding:9px 10px;min-height:42px}
+input:focus-visible,select:focus-visible,button:focus-visible,.opt:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input[readonly]{background:var(--paper);color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;border:0;background:var(--card);color:var(--ink);padding:9px 16px;cursor:pointer;min-height:42px}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.combo{position:relative}
+.list{position:absolute;z-index:5;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;background:var(--card);
+  border:1px solid var(--line);border-radius:8px;max-height:280px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.opt{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:.9rem}
+.opt:hover,.opt[aria-selected=true]{background:var(--paper)}
+.opt .c{font-family:var(--font-num);font-size:.82rem;color:var(--accent);margin-right:8px}
+.picked{font-size:.85rem;color:var(--muted);margin-top:2px}
+.picked b{font-family:var(--font-num);font-weight:500;color:var(--ink)}
+.check{display:flex;gap:8px;align-items:center;font-size:.85rem}
+.check input{width:18px;height:18px}
+.btn{font:inherit;font-weight:700;background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:11px 20px;cursor:pointer;min-height:44px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.note{border-radius:8px;padding:10px 12px;font-size:.88rem;margin-bottom:12px}
+.note.warn{background:var(--warn-bg);color:var(--warn-ink)}
+.note.err{background:var(--err-bg);color:var(--err-ink)}
+.total{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.total .k{font-size:.85rem;color:var(--muted)}
+.total .v{font-family:var(--font-num);font-size:1.7rem;font-weight:500}
+.tr{padding:12px 0;border-bottom:1px solid var(--line)}
+.tr:last-of-type{border-bottom:0}
+.tr .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.tr .name{display:flex;align-items:center;gap:8px;font-weight:600}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.tr .val{font-family:var(--font-num);font-size:1.15rem;font-weight:500;font-variant-numeric:tabular-nums}
+.tr .det{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:4px;font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);font-size:.95rem}
+details{border-top:1px solid var(--line);padding:10px 0}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;font-weight:500}
+details p{margin:8px 0 0;font-size:.9rem;color:var(--muted)}
+.memo{font-size:.85rem;color:var(--muted);margin-top:12px;white-space:pre-line}
+footer{margin-top:26px;font-size:.82rem;color:var(--muted)}
+footer a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="logo"><img src="logo.png" alt="CLRD" width="139" height="38"></span>
+    <h1>Calculadora CBS e IBS</h1>
+    <p>Calcula a CBS, o IBS estadual e o IBS municipal de um item, a partir do NCM ou da NBS, da classificação tributária e da data da operação. Usa as tabelas oficiais do repositório da Receita Federal e roda inteira no seu navegador.</p>
+    <div class="status" id="status">Carregando tabelas…</div>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="h-dados">
+      <h2 id="h-dados">Dados da operação</h2>
+
+      <div class="field">
+        <span class="lbl" id="l-tipo">Tipo de item</span>
+        <div class="seg" role="group" aria-labelledby="l-tipo">
+          <button type="button" id="b-prod" aria-pressed="true">Produto (NCM)</button>
+          <button type="button" id="b-serv" aria-pressed="false">Serviço (NBS)</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="codigo" id="l-codigo">Código NCM</label>
+        <div class="combo">
+          <input type="text" id="codigo" autocomplete="off" inputmode="text" placeholder="Digite o código ou parte do nome" role="combobox" aria-expanded="false" aria-controls="lista" aria-autocomplete="list">
+          <ul class="list" id="lista" role="listbox" hidden></ul>
+        </div>
+        <div class="picked" id="picked">Nenhum código escolhido.</div>
+      </div>
+
+      <div class="field">
+        <label for="cst">Situação tributária (CST)</label>
+        <select id="cst"><option value="">Todas</option></select>
+      </div>
+
+      <div class="field">
+        <label for="cls">Classificação tributária</label>
+        <select id="cls"></select>
+        <label class="check"><input type="checkbox" id="soAplic" checked> Mostrar só as que valem para este código</label>
+        <div class="hint" id="clsHint"></div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="valor">Valor do item (R$)</label>
+          <input type="number" id="valor" min="0" step="0.01" value="1000.00" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="data">Data da operação</label>
+          <input type="date" id="data">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="uf">UF</label>
+          <select id="uf"><option value="">Selecione</option></select>
+        </div>
+        <div class="field">
+          <label for="mun">Município</label>
+          <input type="text" id="mun" list="munList" placeholder="Comece a digitar" autocomplete="off">
+          <datalist id="munList"></datalist>
+        </div>
+      </div>
+      <div class="hint" style="margin:-6px 0 14px">A tabela de referência traz a mesma alíquota para todo o país, então o local não muda o resultado hoje.</div>
+
+      <div class="field" style="margin-bottom:6px">
+        <span class="lbl">Alíquotas nominais (%)</span>
+        <div class="row3">
+          <div class="field" style="margin:0"><label for="aCbs" class="hint">CBS</label><input type="number" id="aCbs" step="0.01" min="0"></div>
+          <div class="field" style="margin:0"><label for="aUf" class="hint">IBS estadual</label><input type="number" id="aUf" step="0.01" min="0"></div>
+          <div class="field" style="margin:0"><label for="aMun" class="hint">IBS municipal</label><input type="number" id="aMun" step="0.01" min="0"></div>
+        </div>
+        <div class="hint" id="aHint"></div>
+      </div>
+
+      <button class="btn" id="calc" type="button" disabled>Calcular</button>
+    </section>
+
+    <section aria-labelledby="h-res" style="display:flex;flex-direction:column;gap:20px">
+      <div class="card" aria-live="polite">
+        <h2 id="h-res">Resultado</h2>
+        <div id="res"><p class="empty">Preencha os dados e clique em Calcular.</p></div>
+      </div>
+
+      <div class="card">
+        <h2>Para entender</h2>
+        <details>
+          <summary>Convivência entre os impostos</summary>
+          <p>A CBS substitui PIS e Cofins, e o IBS substitui ICMS e ISS. Em 2026 as alíquotas de referência são de teste: 0,9% de CBS e 0,1% de IBS. A partir de 2027 a tabela do repositório não traz alíquotas de referência, e elas precisam ser informadas.</p>
+        </details>
+        <details>
+          <summary>Como funciona o crédito</summary>
+          <p>O imposto aparece destacado no documento fiscal, e quem compra apropria como crédito o valor cobrado na etapa anterior, conforme o tratamento da classificação. Esta calculadora mostra apenas o imposto da operação.</p>
+        </details>
+        <details>
+          <summary>O que esta calculadora cobre</summary>
+          <p>Classificações com alíquota padrão ou uniforme de referência, com as reduções da tabela oficial, e classificações sem alíquota (valor zero). Ficam de fora o Imposto Seletivo, a monofasia de combustíveis, as alíquotas fixas e as combinadas (ad valorem e ad rem). Nesses casos a página avisa.</p>
+        </details>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    Esta calculadora não substitui a orientação de um contador ou advogado tributarista. Os valores são arredondados em duas casas, e a regra de arredondamento da API oficial pode diferir em casos de borda.
+    Código e tabelas oficiais: <a href="https://github.com/ReceitaFederal/calculadora-rtc-regime-regular">ReceitaFederal/calculadora-rtc-regime-regular</a>.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var D=null, tipo="NCM", codigo=null; // codigo: {cd, ds}
+  var $=function(id){return document.getElementById(id)};
+  var brl=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
+  var pct=function(n){return n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:4})+"%"};
+  var norm=function(s){return String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase()};
+  var vig=function(ini,fim,d){return (!ini||ini<=d)&&(!fim||d<=fim)};
+  var fmtData=function(iso){var p=iso.split("-");return p[2]+"/"+p[1]+"/"+p[0]};
+  var fmtNcm=function(c){return c.length===8?c.slice(0,4)+"."+c.slice(4,6)+"."+c.slice(6):c};
+  var fmtNbs=function(c){return c.length===9?c[0]+"."+c.slice(1,5)+"."+c.slice(5,7)+"."+c.slice(7):c};
+  var fmtCod=function(c){return tipo==="NCM"?fmtNcm(c):fmtNbs(c)};
+  var hoje=function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+
+  /* ---------- vínculo código x classificação (regra do repositório) ---------- */
+  function aplicavel(cls,cod,d){
+    var lista=(tipo==="NCM"?cls.ncma:cls.nbsa).filter(function(n){return vig(n[1],n[2],d)});
+    if(!lista.length) return true; // sem anexo vigente: aceita qualquer código
+    var A=false,E=false,S=false;
+    lista.forEach(function(n){
+      if(cod.indexOf(n[0])!==0) return;
+      A=true;
+      var temExc=false;
+      n[3].forEach(function(e){ if(vig(e[1],e[2],d) && cod.indexOf(e[0])===0){E=true;temExc=true;} });
+      var algumaExcVigente=n[3].some(function(e){return vig(e[1],e[2],d)});
+      if(!algumaExcVigente) S=true;
+    });
+    return A && !(E && !S);
+  }
+  function nomOk(cls){
+    if(cls.nom==="NBS ou NCM"||cls.nom==="Não possui"||!cls.nom) return true;
+    return cls.nom===tipo;
+  }
+
+  /* ---------- combo de busca ---------- */
+  var lista=$("lista"), inp=$("codigo");
+  function fonte(){return tipo==="NCM"?D.ncm:D.nbs}
+  function buscar(q){
+    var d=$("data").value||hoje();
+    var digits=q.replace(/\D/g,"");
+    var out=[], src=fonte();
+    var isNum=digits.length>0 && /^[\d.\s-]+$/.test(q);
+    var toks=norm(q).split(/\s+/).filter(Boolean);
+    for(var i=0;i<src.length && out.length<40;i++){
+      var r=src[i];
+      if(!vig(r[2],r[3],d)) continue;
+      if(isNum){ if(r[0].indexOf(digits)===0) out.push(r); }
+      else if(toks.length){
+        var t=norm(r[1]); var ok=true;
+        for(var k=0;k<toks.length;k++){ if(t.indexOf(toks[k])<0){ok=false;break;} }
+        if(ok) out.push(r);
+      }
+    }
+    return out;
+  }
+  function mostrar(){
+    var q=inp.value.trim();
+    if(q.length<2){ lista.hidden=true; inp.setAttribute("aria-expanded","false"); return; }
+    var res=buscar(q);
+    lista.innerHTML="";
+    if(!res.length){
+      var li=document.createElement("li"); li.className="opt"; li.textContent="Nada encontrado para esta data."; li.style.cursor="default"; lista.appendChild(li);
+    }
+    res.forEach(function(r){
+      var li=document.createElement("li"); li.className="opt"; li.setAttribute("role","option"); li.tabIndex=0;
+      var c=document.createElement("span"); c.className="c"; c.textContent=fmtCod(r[0]);
+      li.appendChild(c); li.appendChild(document.createTextNode(r[1]));
+      function pick(){ escolher(r); }
+      li.addEventListener("mousedown",function(e){e.preventDefault();pick();});
+      li.addEventListener("keydown",function(e){ if(e.key==="Enter"){pick();} });
+      lista.appendChild(li);
+    });
+    lista.hidden=false; inp.setAttribute("aria-expanded","true");
+  }
+  function escolher(r){
+    codigo={cd:r[0],ds:r[1]};
+    inp.value=fmtCod(r[0]);
+    lista.hidden=true; inp.setAttribute("aria-expanded","false");
+    $("picked").innerHTML="<b>"+fmtCod(r[0])+"</b> "+escapeHtml(r[1]);
+    montarClasses();
+  }
+  function limparCodigo(){
+    codigo=null; $("picked").textContent="Nenhum código escolhido."; montarClasses();
+  }
+  function escapeHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+  inp.addEventListener("input",function(){
+    var dg=inp.value.replace(/\D/g,""), len=tipo==="NCM"?8:9;
+    if(codigo) limparCodigo();
+    if(dg.length===len){
+      var hit=fonte().filter(function(r){return r[0]===dg})[0];
+      if(hit){ escolher(hit); return; }
+    }
+    mostrar();
+  });
+  inp.addEventListener("focus",function(){ if(inp.value.trim().length>=2 && !codigo) mostrar(); });
+  inp.addEventListener("blur",function(){ setTimeout(function(){lista.hidden=true;inp.setAttribute("aria-expanded","false");},120); });
+  inp.addEventListener("keydown",function(e){ if(e.key==="ArrowDown"){var f=lista.querySelector(".opt[role=option]"); if(f){e.preventDefault();f.focus();}} });
+  lista.addEventListener("keydown",function(e){
+    var cur=document.activeElement;
+    if(e.key==="ArrowDown"&&cur.nextElementSibling){e.preventDefault();cur.nextElementSibling.focus();}
+    if(e.key==="ArrowUp"){e.preventDefault(); if(cur.previousElementSibling) cur.previousElementSibling.focus(); else inp.focus();}
+    if(e.key==="Escape"){lista.hidden=true;inp.focus();}
+  });
+
+  /* ---------- classificações ---------- */
+  function classesVisiveis(){
+    var d=$("data").value||hoje();
+    var cstSel=$("cst").value, so=$("soAplic").checked;
+    return D.cls.filter(function(c){
+      if(!vig(c.ini,c.fim,d)) return false;
+      if(cstSel && c.cst!==cstSel) return false;
+      if(so){
+        if(!nomOk(c)) return false;
+        if(codigo && !aplicavel(c,codigo.cd,d)) return false;
+        if(!codigo && ((tipo==="NCM"?c.ncma:c.nbsa).length>0)) { /* sem código, mostra tudo que é do tipo */ }
+      }
+      return true;
+    }).sort(function(a,b){return a.cd<b.cd?-1:a.cd>b.cd?1:0});
+  }
+  function montarCst(){
+    var d=$("data").value||hoje(), seen={}, ops=[];
+    D.cls.forEach(function(c){ if(vig(c.ini,c.fim,d) && !seen[c.cst]){seen[c.cst]=c.cstDs;} });
+    var atual=$("cst").value;
+    var s=$("cst"); s.innerHTML='<option value="">Todas</option>';
+    Object.keys(seen).sort().forEach(function(k){
+      var o=document.createElement("option"); o.value=k; o.textContent=k+" · "+seen[k]; s.appendChild(o);
+    });
+    if(seen[atual]) s.value=atual;
+  }
+  function montarClasses(){
+    var s=$("cls"), atual=s.value;
+    var lista=classesVisiveis();
+    s.innerHTML="";
+    if(!lista.length){
+      var o=document.createElement("option"); o.value=""; o.textContent="Nenhuma classificação disponível"; s.appendChild(o);
+    } else {
+      lista.forEach(function(c){
+        var o=document.createElement("option"); o.value=String(c.id);
+        var t=c.ds.length>110?c.ds.slice(0,107)+"…":c.ds;
+        o.textContent=c.cd+" · "+t; s.appendChild(o);
+      });
+      if(lista.some(function(c){return String(c.id)===atual})) s.value=atual;
+    }
+    $("clsHint").textContent=lista.length+" classificações vigentes nesta data"+($("soAplic").checked&&codigo?" para o código escolhido.":".");
+    $("res").innerHTML='<p class="empty">Preencha os dados e clique em Calcular.</p>';
+  }
+
+  /* ---------- alíquotas ---------- */
+  function refAliq(tb,d){
+    var r=D.ref.filter(function(x){return x[0]===tb && vig(x[2],x[3],d)})[0];
+    return r?r[1]:null;
+  }
+  function atualizaAliq(){
+    var d=$("data").value||hoje();
+    var ano=+d.slice(0,4), ids=["aCbs","aUf","aMun"], tbs=[2,3,4];
+    var ex=[8.8,0.05,0.05];
+    var refs=tbs.map(function(t){return refAliq(t,d)});
+    var temRef=refs.every(function(x){return x!==null});
+    ids.forEach(function(id,i){
+      var el=$(id);
+      if(temRef){ el.value=refs[i]; el.readOnly=true; }
+      else {
+        if(el.readOnly || el.value==="") el.value=ex[i];
+        el.readOnly=false;
+      }
+    });
+    $("aHint").textContent=temRef
+      ? "Alíquotas de referência de "+ano+" da tabela oficial."
+      : "Sem alíquota de referência cadastrada para esta data. Informe as alíquotas do seu caso. Os valores iniciais são os exemplos do repositório e não são alíquotas oficiais.";
+  }
+
+  /* ---------- cálculo ---------- */
+  function reducao(cls,tb,d){
+    var r=cls.red.filter(function(x){return x[0]===tb && vig(x[2],x[3],d)})[0];
+    return r?r[1]:0;
+  }
+  function arred(x){return Math.round((x+1e-9)*100)/100}
+  function calcular(){
+    var res=$("res"), d=$("data").value, v=parseFloat($("valor").value);
+    var msgs=[];
+    if(!codigo) msgs.push("Escolha o código "+tipo+".");
+    if(!$("cls").value) msgs.push("Escolha a classificação tributária.");
+    if(!d) msgs.push("Informe a data da operação.");
+    if(!(v>=0)) msgs.push("Informe o valor do item.");
+    if(msgs.length){ res.innerHTML='<div class="note err">'+msgs.join(" ")+'</div>'; return; }
+    if(d<"2026-01-01"){ res.innerHTML='<div class="note err">A CBS e o IBS passam a valer a partir de 01/01/2026. Escolha uma data a partir dela.</div>'; return; }
+    var cls=D.cls.filter(function(c){return String(c.id)===$("cls").value})[0];
+    var html="", notas=[];
+
+    if(["Padrão","Uniforme nacional (referência)","Sem alíquota"].indexOf(cls.tp)<0){
+      res.innerHTML='<div class="note warn">A classificação '+cls.cd+' usa alíquota do tipo "'+escapeHtml(cls.tp)+'", que esta calculadora ainda não cobre. Use a API oficial do repositório para este caso.</div>';
+      return;
+    }
+    var semAliq=(cls.tp==="Sem alíquota")||cls.z===1;
+    var defs=[["CBS","aCbs",2,"var(--cbs)"],["IBS estadual","aUf",3,"var(--ibsuf)"],["IBS municipal","aMun",4,"var(--ibsmun)"]];
+    var total=0, linhas="", memo=[];
+    defs.forEach(function(df){
+      var nom=parseFloat($(df[1]).value);
+      if(!(nom>=0)) nom=0;
+      var red=reducao(cls,df[2],d);
+      var efet=semAliq?0:nom*(1-red/100);
+      var val=arred(v*efet/100);
+      total+=val;
+      linhas+='<div class="tr"><div class="top"><span class="name"><span class="dot" style="background:'+df[3]+'"></span>'+df[0]+'</span><span class="val">'+brl.format(val)+'</span></div>'+
+        '<div class="det"><span>Alíquota nominal '+pct(nom)+'</span><span>Redução '+pct(red)+'</span><span>Alíquota efetiva '+pct(efet)+'</span></div></div>';
+      memo.push(df[0]+": "+brl.format(v)+" × "+pct(efet)+" = "+brl.format(val));
+    });
+    if(cls.tp==="Sem alíquota") notas.push("Esta classificação não tem alíquota própria, então o imposto calculado é zero.");
+    else if(cls.z===1) notas.push("O tratamento desta classificação aplica alíquota zero.");
+    if(cls.cst==="510"||cls.cst==="515") notas.push("Há diferimento: o valor acima é o imposto da operação, e o recolhimento é adiado.");
+    if(cls.tp==="Uniforme nacional (referência)") notas.push("Alíquota uniforme de referência: confira a alíquota aplicável ao setor.");
+    html+='<div class="total"><span class="k">Total de CBS e IBS</span><span class="v">'+brl.format(arred(total))+'</span></div>'+linhas;
+    notas.forEach(function(n){ html+='<div class="note warn" style="margin-top:12px">'+escapeHtml(n)+'</div>'; });
+    html+='<div class="memo"><b>Memória de cálculo</b>\nClassificação '+cls.cd+' (CST '+cls.cst+'), vigente em '+fmtData(d)+'.\n'+memo.join("\n")+'</div>';
+    res.innerHTML=html;
+  }
+
+  /* ---------- UF e município ---------- */
+  function montarUf(){
+    var s=$("uf"); D.uf.forEach(function(u){var o=document.createElement("option");o.value=u[0];o.textContent=u[1]+" · "+u[2];s.appendChild(o);});
+  }
+  function montarMun(){
+    var uf=+$("uf").value, dl=$("munList"); dl.innerHTML=""; $("mun").value="";
+    if(!uf) return;
+    D.mun.filter(function(m){return m[1]===uf}).forEach(function(m){var o=document.createElement("option");o.value=m[2];dl.appendChild(o);});
+  }
+
+  /* ---------- eventos ---------- */
+  function setTipo(t){
+    tipo=t; codigo=null; inp.value="";
+    $("b-prod").setAttribute("aria-pressed",t==="NCM"); $("b-serv").setAttribute("aria-pressed",t==="NBS");
+    $("l-codigo").textContent="Código "+t;
+    $("picked").textContent="Nenhum código escolhido.";
+    montarClasses();
+  }
+  $("b-prod").addEventListener("click",function(){setTipo("NCM")});
+  $("b-serv").addEventListener("click",function(){setTipo("NBS")});
+  $("cst").addEventListener("change",montarClasses);
+  $("soAplic").addEventListener("change",montarClasses);
+  $("cls").addEventListener("change",function(){$("res").innerHTML='<p class="empty">Preencha os dados e clique em Calcular.</p>';});
+  $("data").addEventListener("change",function(){ montarCst(); atualizaAliq(); montarClasses(); });
+  $("uf").addEventListener("change",montarMun);
+  $("calc").addEventListener("click",calcular);
+
+  /* ---------- carga ---------- */
+  $("data").value=hoje();
+  fetch("dados.json").then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }).then(function(j){
+    D=j; montarUf(); montarCst(); atualizaAliq(); montarClasses();
+    $("calc").disabled=false;
+    var v=D.versao||[];
+    $("status").textContent="Tabelas carregadas: "+D.ncm.length.toLocaleString("pt-BR")+" NCM, "+D.nbs.length.toLocaleString("pt-BR")+" NBS, "+D.cls.length+" classificações."+(v[3]?" Versão "+v[3]+" da base oficial.":"");
+  }).catch(function(){
+    $("status").textContent="Não foi possível carregar as tabelas. Recarregue a página.";
+  });
+})();
+</script>
+</body>
+</html>
